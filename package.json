@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "validate": "node scripts/validate-build.mjs",
+    "package": "pnpm run build && pnpm run validate && node scripts/package.mjs",
+    "dev:link": "pnpm run build && node scripts/link-dev.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --experimental-strip-types --test --test-isolation=none src/*.test.ts"
   },
   "devDependencies": {
+    "fflate": "^0.8.3",
     "typescript": "^5.9.2"
   }
 }
