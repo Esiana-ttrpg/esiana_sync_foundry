@@ -51,7 +51,7 @@ That manifest URL becomes usable from Foundry's **Install Module** dialog after 
 
 ## Publish a release
 
-Update the matching `version` fields in `module.json` and `package.json`, merge the change, and have a maintainer push a matching `v<version>` tag, for example `v0.1.0`. The release workflow runs tests and typechecking, builds and validates the module, then creates a GitHub release containing `module.json` and `esiana-sync.zip`. It fails before publishing when either version field or the tag disagrees.
+Update the matching `version` fields in `module.json` and `package.json`, merge the change, and have a maintainer push a matching `v<version>` tag, for example `v0.1.1`. The release workflow runs tests and typechecking, builds and validates the module, then creates a GitHub release containing `module.json` and `esiana-sync.zip`. It fails before publishing when either version field or the tag disagrees.
 
 The stable manifest URL above resolves through GitHub's `releases/latest` endpoint, so no repository URL changes are needed for each release. Do not attach a ZIP with an enclosing directory: Foundry expects `module.json` at the archive root, and `pnpm package` produces that layout.
 
@@ -59,12 +59,14 @@ The stable manifest URL above resolves through GitHub's `releases/latest` endpoi
 
 1. Install and enable the `foundry-vtt-sync` plugin globally in Esiana, then enable it for the campaign.
 2. Create an Esiana API token with `campaign:read` and `campaign:write`.
-3. As a Foundry GM, open the Notes controls, choose **Esiana Sync**, and run **Reconfigure**.
+3. As a Foundry GM, open **Game Settings → Configure Settings → Module Settings**, find **Esiana Sync**, and choose **Configure Esiana Sync**.
 4. Paste the Esiana base URL and token, choose an administered campaign, collections, fields, and optional Character→Actor mapping.
 
 When Foundry and Esiana use different origins, add the Foundry browser origin to the Esiana deployment's CORS allowlist or reverse-proxy configuration. The URL must be reachable from the GM's browser, not merely from the Foundry server.
 
 The token is stored in a hidden client-scoped setting, never in world settings or documents. Each GM/browser connects independently.
+
+Use **Open Sync Status** in the same Esiana Sync settings section to synchronize immediately, inspect the last result, resolve conflicts, or reconfigure the connection.
 
 ## Safety
 

@@ -5,7 +5,17 @@ import type { SyncEngine } from './syncEngine.js';
 
 function dialog(config: any): Promise<any> {
   const DialogV2 = foundry?.applications?.api?.DialogV2;
-  if (DialogV2?.wait) return DialogV2.wait(config);
+  if (DialogV2?.wait) {
+    return DialogV2.wait({
+      ...config,
+      buttons: config.buttons.map((button: any) => ({
+        ...button,
+        callback: button.callback
+          ? (event: Event, element: HTMLButtonElement, instance: any) => button.callback(event, element.form ?? instance.element)
+          : undefined,
+      })),
+    });
+  }
   return new Promise((resolve) => new Dialog({ title: config.window?.title ?? config.title, content: config.content, buttons: Object.fromEntries(config.buttons.map((b: any) => [b.action, { label: b.label, callback: (html: any) => resolve(b.callback ? b.callback(null, html[0] ?? html) : b.action) }])), close: () => resolve(null) }).render(true));
 }
 export async function openSetup(engine: SyncEngine): Promise<void> {

@@ -1,5 +1,11 @@
 {
   "ESIANA_SYNC.Title": "Esiana Sync",
   "ESIANA_SYNC.SyncNow": "Sync now",
-  "ESIANA_SYNC.Reconfigure": "Reconfigure"
+  "ESIANA_SYNC.Reconfigure": "Reconfigure",
+  "ESIANA_SYNC.SettingsName": "Esiana Sync Configuration",
+  "ESIANA_SYNC.SettingsLabel": "Configure Esiana Sync",
+  "ESIANA_SYNC.SettingsHint": "Connect this world to an Esiana campaign and choose synchronized collections.",
+  "ESIANA_SYNC.StatusName": "Esiana Sync Status",
+  "ESIANA_SYNC.StatusLabel": "Open Sync Status",
+  "ESIANA_SYNC.StatusHint": "Run synchronization and review conflicts or connection errors."
 }
