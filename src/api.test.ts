@@ -1,0 +1,5 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { EsianaClient, EsianaApiError } from './api.ts';
+test('sends bearer authentication and campaign handle', async () => { let call: any[] = []; const prior = globalThis.fetch; globalThis.fetch = (async (...args: any[]) => { call = args; return { ok: true, status: 200, json: async () => ({ collections: [] }) } as Response; }) as typeof fetch; try { await new EsianaClient('https://example.test/', 'secret', 'moonfall').collections(); assert.match(String(call[0]), /campaignHandle=moonfall/); assert.equal((call[1] as any).headers.Authorization, 'Bearer secret'); } finally { globalThis.fetch = prior; } });
+test('surfaces authorization failures', async () => { const prior = globalThis.fetch; globalThis.fetch = (async () => ({ ok: false, status: 403, json: async () => ({ error: 'Forbidden' }) } as Response)) as typeof fetch; try { await assert.rejects(new EsianaClient('https://example.test', 'bad').listCampaigns(), EsianaApiError); } finally { globalThis.fetch = prior; } });
