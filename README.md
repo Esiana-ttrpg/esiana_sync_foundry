@@ -4,7 +4,7 @@ Foundry 13–14 module for collection-driven synchronization with Esiana.
 
 ## Build and verify
 
-Requires Node.js and pnpm.
+Requires Node.js 26 or newer and pnpm.
 
 ```sh
 pnpm install
