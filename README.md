@@ -1,79 +1,74 @@
 # Esiana Sync for Foundry VTT
 
-Foundry 13–14 module for collection-driven synchronization with Esiana.
+Esiana Sync is a Foundry VTT 13–14 module that synchronizes campaign collections between [Esiana](https://github.com/Esiana-ttrpg) and Foundry. It brings selected Esiana content into an `Esiana` folder as journal entries or actors and sends edits to selected fields back to Esiana.
 
-## Build and verify
+Esiana remains authoritative for release rules and lifecycle fields. The module preserves content that is outside the selected fields and stops on conflicting two-sided edits instead of silently overwriting either copy.
 
-Requires Node.js 26 or newer and pnpm.
+## Requirements
 
-```sh
-pnpm install
-pnpm test
-pnpm package
+- Foundry VTT 13 or 14
+- An Esiana deployment with the `foundry-vtt-sync` plugin installed globally and enabled for the campaign
+- An Esiana API token with `campaign:read` and `campaign:write`
+- A Foundry user with GM permissions
+
+See [Installation](docs/INSTALLATION.md) for Foundry installation options.
+
+## Connect a world
+
+1. Enable **Esiana Sync** from **Manage Modules** in the Foundry world.
+2. As a GM, open **Game Settings → Configure Settings → Module Settings**.
+3. Find **Esiana Sync** and select **Configure Esiana Sync**.
+4. Enter the Esiana base URL and API token.
+5. Choose a campaign administered by the token.
+6. Choose the collections and fields to synchronize. For characters, also choose journal or actor representation and, when using actors, an actor type.
+7. Select **Save and sync**.
+
+The Esiana URL must be reachable from the GM's browser. When Foundry and Esiana use different origins, add the Foundry browser origin to the Esiana deployment's CORS allowlist or reverse-proxy configuration.
+
+## Settings
+
+**Configure Esiana Sync** controls:
+
+- **Esiana URL** — the base URL of the Esiana deployment.
+- **API token** — stored as a hidden, client-scoped setting. Each GM and browser connects independently; the token is not stored in world settings or documents.
+- **Campaign** — one campaign for which the token grants a gamemaster role.
+- **Collections** — the Esiana collections synchronized with the world.
+- **Fields** — the fields synchronized in each enabled collection. Fields marked read-only can be received from Esiana but not written back.
+- **Character representation** — characters can become journal entries or actors. Actor representation also requires a Foundry actor type.
+
+The module synchronizes every five minutes after configuration and schedules a near-immediate sync when a linked document changes. Reopen **Configure Esiana Sync** to change the connection or selection.
+
+## Use and sync status
+
+The module creates an `Esiana` folder and collection-specific subfolders. Create or edit documents inside those managed folders to synchronize the selected fields. Moving or renaming a document does not break its link because identity is stored in `flags.esiana-sync.sync`, not in titles or folders.
+
+Choose **Open Sync Status** under the module settings to:
+
+- synchronize immediately;
+- inspect the last synchronization result;
+- review connection errors;
+- resolve conflicts; or
+- reconfigure the connection.
+
+For a conflict, choose the Esiana version, the Foundry version, or duplicate the Foundry copy before applying the Esiana version. Deleting a linked record on either side never deletes its counterpart: the surviving record is unlinked or marked as orphaned.
+
+## Adapter API
+
+System-specific modules can register richer actor mappings:
+
+```js
+game.modules.get('esiana-sync').api.registerAdapter(id, adapter);
 ```
 
-`pnpm package` compiles the ES modules, copies the manifest, stylesheet, and localization assets, validates every manifest entrypoint, and creates `release/esiana-sync.zip`. The ZIP contains `module.json` at its root, as Foundry requires.
+The module also exposes `sync()`, `openSetup()`, and `openStatus()` through the same API object.
 
-During development, `pnpm build` refreshes the installable tree in `dist/`. Browser-loaded JavaScript, CSS, and localization changes are available after rebuilding and refreshing the Foundry browser client.
+## Project documentation
 
-## Install on a development server
+- [Installation](docs/INSTALLATION.md)
+- [Development](docs/DEVELOPMENT.md)
+- [Contributing](CONTRIBUTING.md)
+- [Releasing](docs/RELEASING.md)
 
-Foundry's **Data directory** is the directory containing `Config`, `Data`, and `Logs`; it is not the Foundry application directory. The module must resolve to:
+## License
 
-```text
-<Foundry Data directory>/modules/esiana-sync/module.json
-```
-
-Typical default Data directories are `%LOCALAPPDATA%\FoundryVTT\Data` on Windows, `$HOME/.local/share/FoundryVTT/Data` on Linux, and `$HOME/Library/Application Support/FoundryVTT/Data` on macOS. Use the path configured in Foundry's Setup screen if it differs.
-
-### Development link (fastest)
-
-Build and link `dist/` directly into a local Foundry Data directory:
-
-```sh
-pnpm run dev:link -- "C:\path\to\FoundryVTT\Data"
-```
-
-On macOS or Linux the same command accepts paths such as `/home/foundry/data`. The command refuses to replace an existing directory or a link to a different location. Stop Foundry before creating the link, then restart it so Setup discovers the module. For subsequent code changes, run `pnpm build` and refresh the world in the browser; restart Foundry only when changing `module.json` or if the server does not notice rebuilt files.
-
-For a remote server, create the equivalent server-side symlink from `<data>/modules/esiana-sync` to this repository's `dist` directory, or copy the contents of `dist/` into that module directory after each build.
-
-### ZIP install
-
-Run `pnpm package`, then extract `release/esiana-sync.zip` into `<Foundry Data directory>/modules/esiana-sync/`. Restart Foundry, open a world, choose **Manage Modules**, and enable **Esiana Sync**.
-
-The manifest already points at the expected GitHub release assets:
-
-- Manifest: `https://github.com/Esiana-ttrpg/esiana_sync_foundry/releases/latest/download/module.json`
-- Download: `https://github.com/Esiana-ttrpg/esiana_sync_foundry/releases/latest/download/esiana-sync.zip`
-
-That manifest URL becomes usable from Foundry's **Install Module** dialog after a GitHub release uploads both the root `module.json` and the generated ZIP under those exact names. A raw repository `module.json` is not a complete development installer because its `download` URL still targets a release asset. Linking or copying `dist/` is faster for local iteration.
-
-## Publish a release
-
-Update the matching `version` fields in `module.json` and `package.json`, merge the change, and have a maintainer push a matching `v<version>` tag, for example `v0.1.1`. The release workflow runs tests and typechecking, builds and validates the module, then creates a GitHub release containing `module.json` and `esiana-sync.zip`. It fails before publishing when either version field or the tag disagrees.
-
-The stable manifest URL above resolves through GitHub's `releases/latest` endpoint, so no repository URL changes are needed for each release. Do not attach a ZIP with an enclosing directory: Foundry expects `module.json` at the archive root, and `pnpm package` produces that layout.
-
-## Connect
-
-1. Install and enable the `foundry-vtt-sync` plugin globally in Esiana, then enable it for the campaign.
-2. Create an Esiana API token with `campaign:read` and `campaign:write`.
-3. As a Foundry GM, open **Game Settings → Configure Settings → Module Settings**, find **Esiana Sync**, and choose **Configure Esiana Sync**.
-4. Paste the Esiana base URL and token, choose an administered campaign, collections, fields, and optional Character→Actor mapping.
-
-When Foundry and Esiana use different origins, add the Foundry browser origin to the Esiana deployment's CORS allowlist or reverse-proxy configuration. The URL must be reachable from the GM's browser, not merely from the Foundry server.
-
-The token is stored in a hidden client-scoped setting, never in world settings or documents. Each GM/browser connects independently.
-
-Use **Open Sync Status** in the same Esiana Sync settings section to synchronize immediately, inspect the last result, resolve conflicts, or reconfigure the connection.
-
-## Safety
-
-- Identity is stored in `flags.esiana-sync.sync`; titles and folders are not identity.
-- Two-sided edits stop as conflicts rather than overwriting either copy.
-- Deletion only unlinks or marks an orphan. It never deletes the other system's record.
-- Release rules and lifecycle fields remain authoritative in Esiana.
-- Rich structures not represented by selected fields remain in the last synchronization snapshot.
-
-System-specific modules may call `game.modules.get('esiana-sync').api.registerAdapter(id, adapter)` to add richer Actor mappings.
+Licensed under the [GNU Affero General Public License v3.0](LICENSE).
