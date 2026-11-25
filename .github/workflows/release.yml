@@ -38,6 +38,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Test compiled module
+        run: pnpm run test:build
+
       - name: Typecheck
         run: pnpm typecheck
 

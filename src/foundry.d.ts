@@ -5,7 +5,6 @@ declare const foundry: any;
 declare const Folder: any;
 declare const JournalEntry: any;
 declare const Actor: any;
-declare const Dialog: any;
 declare const CONFIG: any;
 declare const TextEditor: any;
 

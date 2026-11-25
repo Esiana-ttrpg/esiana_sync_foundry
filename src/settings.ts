@@ -3,9 +3,9 @@ export const MODULE_ID = 'esiana-sync';
 export const DEFAULT_CONFIG: ModuleConfig = { instanceUrl: '', campaignId: '', campaignHandle: '', collections: {}, folderIds: {}, intervalMinutes: 5 };
 
 function settingsMenu(open: () => void): any {
-  const FormApplication = foundry.appv1.api.FormApplication;
-  return class EsianaSettingsMenu extends FormApplication {
-    render(): this {
+  const ApplicationV2 = foundry.applications.api.ApplicationV2;
+  return class EsianaSettingsMenu extends ApplicationV2 {
+    async render(): Promise<this> {
       queueMicrotask(open);
       return this;
     }
