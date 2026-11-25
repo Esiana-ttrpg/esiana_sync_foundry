@@ -1,74 +1,19 @@
-# Esiana Sync for Foundry VTT
+﻿# Esiana for Foundry VTT
 
-Esiana Sync is a Foundry VTT 13–14 module that synchronizes campaign collections between [Esiana](https://github.com/Esiana-ttrpg) and Foundry. It brings selected Esiana content into an `Esiana` folder as journal entries or actors and sends edits to selected fields back to Esiana.
+This module connects a Foundry world to an Esiana campaign. It currently supports browsing the wiki, importing supported text pages as native Journal entries, and refreshing linked entries from Esiana.
 
-Esiana remains authoritative for release rules and lifecycle fields. The module preserves content that is outside the selected fields and stops on conflicting two-sided edits instead of silently overwriting either copy.
+## Connect
 
-## Requirements
+As a Foundry GM, open Game Settings and enter the Esiana URL and a personal access token in the Esiana settings. Leave the URL empty for the hosted instance. Choose **Test Connection**, select a discovered campaign, and save the settings. The token needs `campaign:read` for wiki browsing. Collection synchronization also requires the Esiana Foundry plugin and its scopes.
 
-- Foundry VTT 13 or 14
-- An Esiana deployment with the `foundry-vtt-sync` plugin installed globally and enabled for the campaign
-- An Esiana API token with `campaign:read` and `campaign:write`
-- A Foundry user with GM permissions
+The token is a client-scoped Foundry setting stored in the current browser profile, not in the world or Journal documents. Use a separate browser profile from ordinary players: anyone with access to the same browser profile can inspect its local storage. Each GM configures their own token.
 
-See [Installation](docs/INSTALLATION.md) for Foundry installation options.
+## Import and refresh
 
-## Connect a world
+Use **Import Esiana** in the Journal sidebar to search and filter the campaign page tree, preview content, and select pages. Imports may be independent or linked for refresh from Esiana. The browser identifies entries already imported from the same campaign and instance. Esiana headings are represented as Journal folders up to Foundry's supported depth.
 
-1. Enable **Esiana Sync** from **Manage Modules** in the Foundry world.
-2. As a GM, open **Game Settings → Configure Settings → Module Settings**.
-3. Find **Esiana Sync** and select **Configure Esiana Sync**.
-4. Enter the Esiana base URL and API token.
-5. Choose a campaign administered by the token.
-6. Choose the collections and fields to synchronize. For characters, also choose journal or actor representation and, when using actors, an actor type.
-7. Select **Save and sync**.
+Choose **Import Content** in native settings: all content accessible to the API user, or Party-visible content only. Each import uses one normal Journal page. **Sync Esiana** refreshes linked entries using the current choice. Automatic permissions default to Never; the initial-import and every-update options grant observer access only when the imported representation is confirmed Party-visible. A page containing restricted content stays restricted. A refresh first restricts player access, and only restores it after successfully checking the current Party projection. If a page is no longer visible to the party or the refresh fails, access remains restricted. Refresh moves shared entries to the Journal root until their folder hierarchy can be rechecked against the current Party tree. Local edits that conflict with a remote update are reported rather than overwritten.
 
-The Esiana URL must be reachable from the GM's browser. When Foundry and Esiana use different origins, add the Foundry browser origin to the Esiana deployment's CORS allowlist or reverse-proxy configuration.
+The renderer supports basic Markdown, images and readable data fallbacks for other blocks. References to already imported Journals resolve when the API link contains the page ID. Party-visible images can be copied to Foundry storage for independent imports; linked imports retain Esiana URLs because public file storage cannot revoke an image when its visibility changes. The Journal context menu can publish text pages as a new private Esiana page. Revision-protected Foundry-to-Esiana updates currently support a single text block and require the separate core API change; structured pages and title changes are refused explicitly. Existing legacy collection links lack campaign identity and are not refreshed automatically; import the pages using the current browser. See [API compatibility](docs/API-COMPATIBILITY.md) for the write-side API limitations.
 
-## Settings
-
-**Configure Esiana Sync** controls:
-
-- **Esiana URL** — the base URL of the Esiana deployment.
-- **API token** — stored as a hidden, client-scoped setting. Each GM and browser connects independently; the token is not stored in world settings or documents.
-- **Campaign** — one campaign for which the token grants a gamemaster role.
-- **Collections** — the Esiana collections synchronized with the world.
-- **Fields** — the fields synchronized in each enabled collection. Fields marked read-only can be received from Esiana but not written back.
-- **Character representation** — characters can become journal entries or actors. Actor representation also requires a Foundry actor type.
-
-The module synchronizes every five minutes after configuration and schedules a near-immediate sync when a linked document changes. Reopen **Configure Esiana Sync** to change the connection or selection.
-
-## Use and sync status
-
-The module creates an `Esiana` folder and collection-specific subfolders. Create or edit documents inside those managed folders to synchronize the selected fields. Moving or renaming a document does not break its link because identity is stored in `flags.esiana-sync.sync`, not in titles or folders.
-
-Choose **Open Sync Status** under the module settings to:
-
-- synchronize immediately;
-- inspect the last synchronization result;
-- review connection errors;
-- resolve conflicts; or
-- reconfigure the connection.
-
-For a conflict, choose the Esiana version, the Foundry version, or duplicate the Foundry copy before applying the Esiana version. Deleting a linked record on either side never deletes its counterpart: the surviving record is unlinked or marked as orphaned.
-
-## Adapter API
-
-System-specific modules can register richer actor mappings:
-
-```js
-game.modules.get('esiana-sync').api.registerAdapter(id, adapter);
-```
-
-The module also exposes `sync()`, `openSetup()`, and `openStatus()` through the same API object.
-
-## Project documentation
-
-- [Installation](docs/INSTALLATION.md)
-- [Development](docs/DEVELOPMENT.md)
-- [Contributing](CONTRIBUTING.md)
-- [Releasing](docs/RELEASING.md)
-
-## License
-
-Licensed under the [GNU Affero General Public License v3.0](LICENSE).
+The connection test verifies campaign discovery, not a live import or every token scope. The module has not yet been validated end-to-end in a Foundry world against a running Esiana instance.

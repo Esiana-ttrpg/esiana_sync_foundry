@@ -7,3 +7,6 @@ export interface CollectionChoice { enabled: boolean; fields: string[]; represen
 export interface ModuleConfig { instanceUrl: string; campaignId: string; campaignHandle: string; collections: Record<string, CollectionChoice>; folderIds: Record<string, string>; intervalMinutes: number }
 export interface SyncFlags { schemaVersion: 1; collection: string; esianaId: string; documentId: string; pageId?: string; selectedFields: string[]; esianaRevision: string; foundryRevision: string; baseHash: string; baseFields: Record<string, unknown>; source: 'esiana' | 'foundry'; lastMutationId: string; orphaned?: boolean }
 export interface Conflict { collection: string; resourceId: string; documentId: string; base: Record<string, unknown>; esiana: Record<string, unknown>; foundry: Record<string, unknown> }
+
+export interface WikiNode { id: string; title: string; parentId: string | null; visibility: string; templateType: string; children: WikiNode[] }
+export interface WikiPage extends WikiNode { blocks: Array<{ type: string; content?: Record<string, unknown> }>; updatedAt: string }

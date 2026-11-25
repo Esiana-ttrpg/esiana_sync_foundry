@@ -8,3 +8,5 @@ declare const Actor: any;
 declare const Dialog: any;
 declare const CONFIG: any;
 declare const TextEditor: any;
+
+declare const FilePicker: any;

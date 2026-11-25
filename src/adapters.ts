@@ -4,13 +4,13 @@ export interface FoundryAdapter { kind: 'JournalEntry' | 'Actor'; createData(res
 const journal: FoundryAdapter = {
   kind: 'JournalEntry',
   createData(resource, _choice, folderId, flags) { return { name: resource.displayName, folder: folderId, pages: [{ name: resource.displayName, type: 'text', text: { content: markdownToHtml(String(resource.fields.body ?? '')), format: 1 } }], flags: { 'esiana-sync': { sync: flags } } }; },
-  readFields(document, selected) { const page = document.pages?.contents?.[0] ?? document.pages?.[0]; return selectFields({ name: document.name, body: htmlToMarkdown(page?.text?.content ?? ''), ...(document.getFlag?.('esiana-sync', 'sync')?.baseFields ?? {}) }, selected); },
+  readFields(document, selected) { const page = document.pages?.contents?.[0] ?? document.pages?.[0]; return selectFields({ ...(document.getFlag?.('esiana-sync', 'sync')?.baseFields ?? {}), name: document.name, body: htmlToMarkdown(page?.text?.content ?? '') }, selected); },
   updateData(resource, flags) { return { name: resource.displayName, 'flags.esiana-sync.sync': flags }; },
 };
 const actor: FoundryAdapter = {
   kind: 'Actor',
   createData(resource, choice, folderId, flags) { return { name: resource.displayName, type: choice.actorType, folder: folderId, img: resource.fields.image || undefined, flags: { 'esiana-sync': { sync: flags } } }; },
-  readFields(document, selected) { return selectFields({ name: document.name, image: document.img, body: document.getFlag?.('esiana-sync', 'biography') ?? '', ...(document.getFlag?.('esiana-sync', 'sync')?.baseFields ?? {}) }, selected); },
+  readFields(document, selected) { return selectFields({ ...(document.getFlag?.('esiana-sync', 'sync')?.baseFields ?? {}), name: document.name, image: document.img, body: document.getFlag?.('esiana-sync', 'biography') ?? '' }, selected); },
   updateData(resource, flags) { return { name: resource.displayName, ...(resource.fields.image ? { img: resource.fields.image } : {}), 'flags.esiana-sync.biography': resource.fields.body ?? '', 'flags.esiana-sync.sync': flags }; },
 };
 const registry = new Map<string, FoundryAdapter>([['journal', journal], ['actor', actor]]);
