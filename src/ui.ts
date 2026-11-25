@@ -1,6 +1,5 @@
 import { EsianaClient } from './api.js';
-import { getConfig, getToken, MODULE_ID, setConfig, setToken } from './settings.js';
-import type { CollectionChoice, Representation } from './types.js';
+import { getConfig, getToken, MODULE_ID, setConfig } from './settings.js';
 import type { SyncEngine } from './syncEngine.js';
 
 export function dialog(config: any): Promise<any> {
@@ -15,21 +14,35 @@ export function dialog(config: any): Promise<any> {
     })),
   });
 }
-export async function openSetup(engine: SyncEngine): Promise<void> {
+const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+// Kept for the public module API and status dialog. The native Campaign setting
+// is the normal configuration path; no Esiana plugin is required for wiki access.
+export async function openSetup(_engine: SyncEngine): Promise<void> {
   if (!game.user?.isGM) return;
   const current = getConfig();
-  const connection = { url: current.instanceUrl, token: getToken() };
-  if (!connection.token) throw new Error('Enter and save a personal access token in Esiana settings first.');
-  const discovery = new EsianaClient(connection.url, connection.token); const campaigns = (await discovery.listCampaigns()).campaigns;
-  if (!campaigns.length) throw new Error('No accessible Esiana campaigns were found');
-  const campaignHtml = campaigns.map((c) => `<option value="${c.id}" data-handle="${c.handle}">${c.name}</option>`).join('');
-  const selected = await dialog({ window: { title: 'Choose campaign' }, content: `<form class="esiana-sync-form"><label>Campaign<select name="campaign">${campaignHtml}</select></label></form>`, buttons: [{ action: 'next', label: 'Next', default: true, callback: (_e: any, el: HTMLElement) => { const option = (el.querySelector('select') as HTMLSelectElement).selectedOptions[0]; return { id: option.value, handle: option.dataset.handle }; } }, { action: 'cancel', label: 'Cancel' }] });
+  const token = getToken();
+  if (!token) throw new Error('Enter and save a personal access token in Esiana settings first.');
+  const discovery = new EsianaClient(current.instanceUrl, token);
+  const { campaigns } = await discovery.listCampaigns();
+  if (!Array.isArray(campaigns) || !campaigns.length) throw new Error('No accessible Esiana campaigns were found.');
+  const campaignHtml = campaigns.map((campaign) => `<option value="${escapeHtml(campaign.handle)}" ${campaign.handle === current.campaignHandle ? 'selected' : ''}>${escapeHtml(campaign.name)}</option>`).join('');
+  const selected = await dialog({
+    window: { title: 'Choose campaign' },
+    content: `<form class="esiana-sync-form"><label>Campaign<select name="campaign">${campaignHtml}</select></label></form>`,
+    buttons: [
+      { action: 'save', label: 'Use campaign', default: true, callback: (_event: Event, element: HTMLElement) => (element.querySelector('select') as HTMLSelectElement).value },
+      { action: 'cancel', label: 'Cancel' },
+    ],
+  });
   if (!selected || selected === 'cancel') return;
-  const client = new EsianaClient(connection.url, connection.token, selected.handle); const collections = (await client.collections()).collections;
-  const rows = collections.map((c) => `<fieldset ${c.available ? '' : 'disabled'}><label><input type="checkbox" name="collection" value="${c.key}" ${c.available ? 'checked' : ''}>${c.label}</label>${c.available ? `<div>${c.fields.map((f) => `<label><input type="checkbox" name="${c.key}:field" value="${f.key}" ${f.defaultSelected ? 'checked' : ''}>${f.label}${f.writable ? '' : ' (read-only)'}</label>`).join('')}</div>${c.key === 'characters' ? `<label>Representation<select name="characters:representation"><option value="journal">Journal</option><option value="actor">Actor</option></select></label><label>Actor type<select name="characters:actorType">${Object.keys(CONFIG.Actor.typeLabels ?? {}).map((type) => `<option value="${type}">${type}</option>`).join('')}</select></label>` : ''}` : `<p>${c.warning ?? 'Deferred'}</p>`}</fieldset>`).join('');
-  const choices = await dialog({ window: { title: 'Choose collections and fields' }, content: `<form class="esiana-sync-form esiana-sync-collections">${rows}</form>`, buttons: [{ action: 'save', label: 'Save and sync', default: true, callback: (_e: any, el: HTMLElement) => { const form = el.querySelector('form')!; const result: Record<string, CollectionChoice> = {}; for (const c of collections.filter((x) => x.available)) { const enabled = Boolean(form.querySelector(`input[name="collection"][value="${c.key}"]:checked`)); const fields = [...form.querySelectorAll(`input[name="${c.key}:field"]:checked`)].map((x: any) => x.value); const representation = ((form.querySelector(`[name="${c.key}:representation"]`) as HTMLSelectElement)?.value ?? 'journal') as Representation; const actorType = (form.querySelector(`[name="${c.key}:actorType"]`) as HTMLSelectElement)?.value; result[c.key] = { enabled, fields, representation, actorType }; } return result; } }, { action: 'cancel', label: 'Cancel' }] });
-  if (!choices || choices === 'cancel') return;
-  await setToken(connection.token); await setConfig({ ...current, instanceUrl: connection.url.replace(/\/$/, ''), campaignId: selected.id, campaignHandle: selected.handle, collections: choices }); ui.notifications.info('Esiana connected. Use Import Esiana in the Journal sidebar.');
+  const campaign = campaigns.find((candidate) => candidate.handle === selected);
+  if (!campaign) throw new Error('The selected campaign is no longer available.');
+  const result = await new EsianaClient(current.instanceUrl, token, campaign.handle).wikiTree();
+  if (!Array.isArray(result?.tree)) throw new Error('Esiana returned an invalid campaign wiki response.');
+  const changed = current.campaignHandle !== campaign.handle;
+  await setConfig({ ...current, campaignId: campaign.id, campaignHandle: campaign.handle, ...(changed ? { collections: {}, folderIds: {} } : {}) });
+  ui.notifications.info(`Connected to ${campaign.name}. Use Import Esiana in the Journal sidebar.`);
 }
 export async function openStatus(engine: SyncEngine): Promise<void> {
   const config = getConfig(); const last = game.settings.get(MODULE_ID, 'lastSync'); const conflicts = game.settings.get(MODULE_ID, 'conflicts') ?? [];

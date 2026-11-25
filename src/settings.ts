@@ -27,14 +27,6 @@ export function registerSettings(actions: { setup: () => void; status: () => voi
   game.settings.register(MODULE_ID, 'lastSync', { scope: 'client', config: false, type: Object, default: null });
   game.settings.register(MODULE_ID, 'conflicts', { scope: 'client', config: false, type: Array, default: [] });
   game.settings.registerMenu(MODULE_ID, 'testConnection', { name: 'Connection Status', label: 'Test Connection', hint: 'Test the connection using the values currently entered above.', icon: 'fa-solid fa-plug', type: settingsMenu(actions.test), restricted: true });
-  game.settings.registerMenu(MODULE_ID, 'configure', {
-    name: 'ESIANA_SYNC.SettingsName',
-    label: 'ESIANA_SYNC.SettingsLabel',
-    hint: 'ESIANA_SYNC.SettingsHint',
-    icon: 'fa-solid fa-link',
-    type: settingsMenu(actions.setup),
-    restricted: true,
-  });
   game.settings.registerMenu(MODULE_ID, 'status', {
     name: 'ESIANA_SYNC.StatusName',
     label: 'ESIANA_SYNC.StatusLabel',

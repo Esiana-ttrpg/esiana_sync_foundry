@@ -26,7 +26,7 @@ export class EsianaClient {
     if (!response.ok) {
       // Do not print arbitrary server responses: they may contain credentials or user data.
       console.error('Esiana request failed', { endpoint: safeEndpoint, status: response.status, detail: 'Response omitted to protect sensitive data.' });
-      const message = response.status === 401 ? 'Personal access token is invalid or expired.' : response.status === 403 ? 'Token is missing the required permissions, or this account lacks access.' : response.status === 404 ? 'Could not locate the Esiana API at this address.' : response.status >= 500 ? 'Esiana returned an unexpected server error.' : `Esiana request failed (${response.status}).`;
+      const message = response.status === 401 ? 'Personal access token is invalid or expired.' : response.status === 403 ? 'Token is missing the required permissions, or this account lacks access.' : response.status === 404 ? (path.startsWith('/api/plugin-runtime/') ? 'The optional Esiana sync plugin endpoint is unavailable. Check that the plugin is installed and enabled.' : path === '/api/campaigns' ? 'Could not locate the Esiana API at this address.' : 'The requested Esiana campaign or page was not found, or is not accessible.') : response.status >= 500 ? 'Esiana returned an unexpected server error.' : `Esiana request failed (${response.status}).`;
       throw new EsianaApiError(response.status, message);
     }
     if (payload === null) throw new EsianaApiError(response.status, 'Could not locate a valid Esiana API response at this address.');

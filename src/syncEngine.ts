@@ -16,41 +16,14 @@ export class SyncEngine {
     const config = getConfig(); const token = getToken();
     if (!config.campaignHandle || !token) throw new Error('Esiana connection is not configured');
     const wikiCount = await syncWikiJournals();
-    if (!Object.values(config.collections).some((choice) => choice.enabled)) { await game.settings.set(MODULE_ID, 'lastSync', { at: new Date().toISOString(), ok: true, counts: { wiki: wikiCount } }); return; }
-    if ([...game.journal.contents, ...game.actors.contents].some((doc: any) => doc.getFlag?.(MODULE_ID, 'sync'))) throw new Error('Legacy collection links do not record their campaign and cannot be synchronized safely. Import the pages using the current browser.');
-    const client = new EsianaClient(config.instanceUrl, token, config.campaignHandle);
-    const { collections } = await client.collections(); config.folderIds = await ensureFolders(config, collections); await setConfig(config);
-    const conflicts: Conflict[] = []; const counts: Record<string, number> = {};
-    for (const descriptor of collections) {
-      const choice = config.collections[descriptor.key]; if (!descriptor.available || !choice?.enabled) continue;
-      const remote = await client.resources(descriptor.key); counts[descriptor.key] = remote.length;
-      for (const resource of remote) {
-        const doc = findLinked(resource.collection, resource.id);
-        if (!doc) continue;
-        const flags = doc.getFlag(MODULE_ID, 'sync') as SyncFlags; const adapter = adapterFor(choice);
-        if (resource.deleted) { await doc.setFlag(MODULE_ID, 'sync', { ...flags, orphaned: true }); continue; }
-        const esianaFields = selectFields(resource.fields, flags.selectedFields); const localFields = adapter.readFields(doc, flags.selectedFields); const state = classify(flags.baseFields, esianaFields, localFields);
-        if (state === 'conflict') { conflicts.push({ collection: resource.collection, resourceId: resource.id, documentId: doc.id, base: flags.baseFields, esiana: esianaFields, foundry: localFields }); continue; }
-        if (state === 'foundry-only') {
-          const mutationId = crypto.randomUUID(); const changed = Object.fromEntries(Object.entries(localFields).filter(([key, value]) => stableStringify(value) !== stableStringify(flags.baseFields[key]))); if ('body' in changed && descriptor.resourceKind === 'wiki-page') throw new Error(`Cannot safely send edits to ${resource.displayName}: the sync API would replace its structured wiki blocks. Edit this page in Esiana.`); const result = await client.update(resource, changed, mutationId); const next = this.flags(flags, result.resource, localFields, doc, 'foundry', mutationId); await doc.setFlag(MODULE_ID, 'sync', next); continue;
-        }
-        if (state === 'esiana-only') {
-          const mutationId = crypto.randomUUID(); remoteWrites.add(doc.uuid); const next = this.flags(flags, resource, esianaFields, doc, 'esiana', mutationId);
-          await doc.update(adapter.updateData(resource, next), { esianaSyncMutationId: mutationId });
-          const page = doc.pages?.contents?.[0]; if (page && typeof resource.fields.body === 'string') await page.update({ 'text.content': markdownToHtml(resource.fields.body) }, { esianaSyncMutationId: mutationId });
-          remoteWrites.delete(doc.uuid); continue;
-        }
-        if (flags.esianaRevision !== resource.revision) await doc.setFlag(MODULE_ID, 'sync', this.flags(flags, resource, esianaFields, doc, 'esiana', flags.lastMutationId));
-      }
-      for (const doc of linkedDocuments(descriptor.key)) {
-        const flags = doc.getFlag(MODULE_ID, 'sync') as SyncFlags;
-        if (!remote.some((item) => item.id === flags.esianaId)) await doc.setFlag(MODULE_ID, 'sync', { ...flags, orphaned: true });
-      }
+    // Legacy links did not record the campaign; do not send them to whichever
+    // campaign is currently selected. Wiki imports do not require a plugin.
+    if ([...game.journal.contents, ...game.actors.contents].some((doc: any) => doc.getFlag?.(MODULE_ID, 'sync'))) {
+      throw new Error('Legacy collection links do not record their campaign and cannot be synchronized safely. Import the pages using the current browser.');
     }
-    await game.settings.set(MODULE_ID, 'conflicts', conflicts);
-    await game.settings.set(MODULE_ID, 'lastSync', { at: new Date().toISOString(), ok: true, counts });
-    if (conflicts.length) ui.notifications.warn(`Esiana Sync found ${conflicts.length} conflict(s).`);
+    await game.settings.set(MODULE_ID, 'lastSync', { at: new Date().toISOString(), ok: true, counts: { wiki: wikiCount } });
   }
+
   private flags(old: SyncFlags, resource: SyncResource, fields: Record<string, unknown>, doc: any, source: 'esiana' | 'foundry', mutationId: string): SyncFlags { return { ...old, esianaRevision: resource.revision, foundryRevision: foundryRevision(doc), baseFields: fields, baseHash: hashFields(fields), source, lastMutationId: mutationId, orphaned: false }; }
   async handleCreate(_doc: any, _options: any): Promise<void> { /* Publishing is explicit. */ }
   scheduleSoon(): void { if (this.pending) window.clearTimeout(this.pending); this.pending = window.setTimeout(() => void this.sync().catch((e) => this.report(e)), 750); }

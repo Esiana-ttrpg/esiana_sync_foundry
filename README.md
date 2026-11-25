@@ -4,7 +4,7 @@ This module connects a Foundry world to an Esiana campaign. It currently support
 
 ## Connect
 
-As a Foundry GM, open Game Settings and enter the Esiana URL and a personal access token in the Esiana settings. Leave the URL empty for the hosted instance. Choose **Test Connection**, select a discovered campaign, and save the settings. The token needs `campaign:read` for wiki browsing. Collection synchronization also requires the Esiana Foundry plugin and its scopes.
+As a Foundry GM, open Game Settings and enter the Esiana URL and a personal access token in the Esiana settings. Leave the URL empty for the hosted instance. Choose **Test Connection**, select a discovered campaign, and save the settings. The token needs `campaign:read` for wiki browsing. The wiki importer uses the standard campaign API and does not require an Esiana plugin.
 
 The token is a client-scoped Foundry setting stored in the current browser profile, not in the world or Journal documents. Use a separate browser profile from ordinary players: anyone with access to the same browser profile can inspect its local storage. Each GM configures their own token.
 
