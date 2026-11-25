@@ -2,7 +2,7 @@
   "id": "esiana-sync",
   "title": "Esiana",
   "description": "Bidirectional collection synchronization between Esiana and Foundry VTT.",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "compatibility": { "minimum": "13", "verified": "14" },
   "authors": [{ "name": "Esiana" }],
   "esmodules": ["scripts/main.js"],
