@@ -9,4 +9,8 @@ export interface SyncFlags { schemaVersion: 1; collection: string; esianaId: str
 export interface Conflict { collection: string; resourceId: string; documentId: string; base: Record<string, unknown>; esiana: Record<string, unknown>; foundry: Record<string, unknown> }
 
 export interface WikiNode { id: string; title: string; parentId: string | null; visibility: string; templateType: string; pathKey?: string | null; metadata?: Record<string, unknown> | null; children: WikiNode[] }
-export interface WikiPage extends WikiNode { blocks: Array<{ type: string; content?: Record<string, unknown> }>; updatedAt: string }
+export interface WikiPage extends WikiNode { blocks: Array<{ id?: string; type: string; content?: Record<string, unknown> }>; updatedAt: string }
+
+export interface EntityField { id: string; key: string; label: string; type: string; value: unknown; pageId: string | null; displayOrder: number }
+export interface EntityPage { id: string; key: string; title: string; origin: string; renderMode: string; displayOrder: number; hidden: boolean; coreKey?: string; blocks?: WikiPage['blocks'] }
+export interface JournalPresentationPage { sourceId: string; title: string; html: string; blockIds?: string[]; fieldIds?: string[] }

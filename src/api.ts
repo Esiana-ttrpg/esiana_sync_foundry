@@ -1,6 +1,13 @@
-import type { CampaignSummary, CollectionDescriptor, SyncResource, WikiNode, WikiPage } from './types.js';
+import type { CampaignSummary, CollectionDescriptor, SyncResource, WikiNode, WikiPage, EntityField, EntityPage } from './types.js';
 
-export const DEFAULT_INSTANCE_URL = 'https://esiana.psl.coffee';
+export function normalizeInstanceUrl(value: string): string {
+  const input = value.trim();
+  if (!input) throw new Error('Enter the URL of your Esiana instance in the module settings.');
+  let parsed: URL;
+  try { parsed = new URL(input); } catch { throw new Error('Enter a valid Esiana URL beginning with http:// or https://.'); }
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error('Enter a valid Esiana URL without credentials, a query, or a fragment.');
+  return parsed.toString().replace(/\/$/, '');
+}
 
 export class EsianaApiError extends Error {
   status: number;
@@ -13,7 +20,7 @@ export class EsianaClient {
   private campaignHandle: string;
   constructor(baseUrl: string, token: string, campaignHandle = '') { this.baseUrl = baseUrl; this.token = token; this.campaignHandle = campaignHandle; }
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const endpoint = `${(this.baseUrl.trim() || DEFAULT_INSTANCE_URL).replace(/\/$/, '')}${path}`;
+    const endpoint = `${normalizeInstanceUrl(this.baseUrl)}${path}`;
     const safeEndpoint = endpoint.replaceAll(this.token, '[redacted]').replaceAll(encodeURIComponent(this.token), '[redacted]').replace(/(https?:\/\/)[^/@]+@/, '$1[redacted]@').replace(/\?.*$/, '?[redacted]');
     let response: Response;
     try {
@@ -33,7 +40,7 @@ export class EsianaClient {
     return payload as T;
   }
   async asset(url: string): Promise<Blob> {
-    const base = new URL(this.baseUrl.trim() || DEFAULT_INSTANCE_URL);
+    const base = new URL(normalizeInstanceUrl(this.baseUrl));
     const target = new URL(url, base);
     if (target.origin !== base.origin || !['http:', 'https:'].includes(target.protocol)) throw new Error('Image must be hosted by the configured Esiana instance.');
     let response: Response;
@@ -47,6 +54,10 @@ export class EsianaClient {
   listCampaigns(): Promise<{ campaigns: CampaignSummary[] }> { return this.request('/api/campaigns'); }
   createWikiPage(title: string, blocks: Record<string, unknown>[]): Promise<{ page: WikiPage }> { return this.request(`/api/campaigns/${encodeURIComponent(this.campaignHandle)}/wiki`, { method: 'POST', body: JSON.stringify({ title, visibility: 'DM_Only', blocks }) }); }
   async updateWikiLayout(id: string, expectedUpdatedAt: string, blocks: unknown[]): Promise<{ updatedAt: string }> { try { return await this.request(`/api/campaigns/${encodeURIComponent(this.campaignHandle)}/wiki/${encodeURIComponent(id)}/layout/revisioned`, { method: 'PATCH', body: JSON.stringify({ expectedUpdatedAt, blocks }) }); } catch (error) { if (error instanceof EsianaApiError && error.status === 404) throw new Error('This Esiana instance does not expose the revision-protected wiki update API, or the page is unavailable.'); throw error; } }
+  entityGraph(id: string, party = false): Promise<{ nodes: Array<{ entityId: string; title: string; href?: string | null }>; edges: Array<{ source: { entityId: string }; target: { entityId: string }; relationKind: string; payload?: { role?: string | null } | null }> }> { return this.request(`/api/campaigns/${encodeURIComponent(this.campaignHandle)}/entity-graph?entityType=wiki_page&entityId=${encodeURIComponent(id)}&depth=1${party ? '&previewAsPlayer=true' : ''}`); }
+  partyKnowledge(id: string, party = false): Promise<{ knowledge: { claims?: Array<{ statement?: string }> } }> { return this.request(`/api/campaigns/${encodeURIComponent(this.campaignHandle)}/wiki/${encodeURIComponent(id)}/party-knowledge${party ? '?previewAsPlayer=true' : ''}`); }
+  entityPages(id: string, party = false): Promise<{ pages: EntityPage[] }> { return this.request(`/api/campaigns/${encodeURIComponent(this.campaignHandle)}/wiki/${encodeURIComponent(id)}/entity-pages${party ? '?previewAsPlayer=true' : ''}`); }
+  entityFields(id: string, party = false): Promise<{ fields: EntityField[] }> { return this.request(`/api/campaigns/${encodeURIComponent(this.campaignHandle)}/wiki/${encodeURIComponent(id)}/entity-fields${party ? '?previewAsPlayer=true' : ''}`); }
   wikiTree(): Promise<{ tree: WikiNode[] }> { return this.request(`/api/campaigns/${encodeURIComponent(this.campaignHandle)}/wiki/tree`); }
   wikiTreeParty(): Promise<{ tree: WikiNode[]; campaign?: { isMember?: boolean } }> { return this.request(`/api/campaigns/${encodeURIComponent(this.campaignHandle)}/wiki/tree?previewAsPlayer=true`); }
   wikiPage(id: string, party = false): Promise<WikiPage> { return this.request(`/api/campaigns/${encodeURIComponent(this.campaignHandle)}/wiki/${encodeURIComponent(id)}${party ? '?previewAsPlayer=true' : ''}`); }

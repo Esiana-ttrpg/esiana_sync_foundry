@@ -1,10 +1,10 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import test from 'node:test';
 import { openSetup } from '../dist/scripts/ui.js';
 import { SyncEngine } from '../dist/scripts/syncEngine.js';
 
 function fixture() {
-  const store = new Map(Object.entries({ config: { instanceUrl: '', campaignHandle: '', campaignId: '', collections: {}, folderIds: {}, intervalMinutes: 5 }, campaignHandle: '', instanceUrl: '', apiToken: 'test-token' }));
+  const store = new Map(Object.entries({ config: { instanceUrl: 'https://esiana.example.test', campaignHandle: '', campaignId: '', collections: {}, folderIds: {}, intervalMinutes: 5 }, campaignHandle: '', instanceUrl: 'https://esiana.example.test', apiToken: 'test-token' }));
   globalThis.game = { user: { isGM: true }, journal: { contents: [] }, actors: { contents: [] }, settings: { get: (_ns, key) => store.get(key), set: async (_ns, key, value) => store.set(key, value) } };
   globalThis.ui = { notifications: { info: () => {}, warn: () => {}, error: () => {} } };
   globalThis.foundry = { applications: { api: { DialogV2: { wait: async (config) => config.buttons[0].callback({}, { form: { querySelector: () => ({ value: 'florence' }) } }, {}) } } } };

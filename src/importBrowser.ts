@@ -1,6 +1,6 @@
-﻿import { importableRows } from './wikiTree.js';
-import { prepareWikiImport, createWikiJournal, renderWikiPage } from './wikiSync.js';
-import { EsianaClient } from './api.js';
+import { groupForRow, importableRows } from './wikiTree.js';
+import { prepareWikiImport, createWikiJournal } from './wikiSync.js';
+import { EsianaClient, normalizeInstanceUrl } from './api.js';
 import { markdownToHtml } from './conversion.js';
 import { getConfig, getToken, MODULE_ID } from './settings.js';
 import { dialog } from './ui.js';
@@ -45,15 +45,20 @@ export async function openImportBrowser(): Promise<void> {
   const partyRows = projectionVerified ? flatten(partyTree!.tree) : [];
   const partyById = new Map(partyRows.map((row) => [row.node.id, row]));
   const rows = importableRows(result.tree).filter(({ node }) => game.settings.get(MODULE_ID, 'showTemplates') || node.templateType !== 'TEMPLATE');
-  const instance = config.instanceUrl.trim().replace(/\/$/, '') || 'https://esiana.psl.coffee';
-  const items = rows.map(({ node, ancestors }) => {
-    const path = ancestors.map((item) => item.title).join(' / ');
+  const instance = normalizeInstanceUrl(config.instanceUrl);
+  const groups = new Map<string, { title: string; items: string[] }>();
+  for (const row of rows) {
+    const { node, ancestors } = row;
+    const group = groupForRow(row);
+    const path = ancestors.filter((item) => !['world', 'game'].includes(item.title.trim().toLowerCase())).map((item) => item.title).join(' / ');
     const existing = imported(node.id, config.campaignHandle, instance);
-    return `<li class="esiana-import-row" data-search="${escapeHtml(`${node.title} ${path}`.toLowerCase())}" data-category="${escapeHtml(ancestors[0]?.id ?? node.id)}"><label><input type="checkbox" name="page" value="${escapeHtml(node.id)}" ${existing ? 'disabled' : ''}> <strong>${escapeHtml(node.title)}</strong> <small>${escapeHtml(path)} · ${escapeHtml(node.visibility)}${existing ? ' · Imported' : ''}</small></label><button type="button" data-preview="${escapeHtml(node.id)}">Preview</button></li>`;
-  }).join('');
-  const categoryNodes = new Map(rows.map(({ node, ancestors }) => { const category = ancestors[0] ?? node; return [category.id, category] as const; }));
-  const categories = [...categoryNodes.values()].map((node) => `<option value="${escapeHtml(node.id)}">${escapeHtml(node.title)}</option>`).join('');
-  const content = `<div class="esiana-import"><div class="esiana-import-filters"><input name="search" type="search" placeholder="Search pages" aria-label="Search pages"><select name="category" aria-label="Filter by category"><option value="">All categories</option>${categories}</select></div><div class="esiana-import-toolbar"><button type="button" data-select-visible>Select visible</button><span data-selection-count aria-live="polite">0 selected</span></div><ul class="esiana-import-list">${items || '<li class="esiana-import-empty">No pages found.</li>'}</ul><div class="esiana-import-footer"><label>Import behavior <select name="mode"><option value="independent">Independent copies</option><option value="fromEsiana">Sync from Esiana</option></select></label><aside data-preview-output aria-live="polite">Select Preview to inspect a page.</aside></div></div>`;
+    const item = `<li class="esiana-import-row" data-search="${escapeHtml(`${node.title} ${path}`.toLowerCase())}" data-category="${escapeHtml(group.id)}"><label><input type="checkbox" name="page" value="${escapeHtml(node.id)}" ${existing ? 'disabled' : ''}><span class="esiana-import-title">${escapeHtml(node.title)}<small>${escapeHtml(node.visibility === 'DM_Only' ? 'GM' : node.visibility)}${existing ? ' ? Imported' : ''}</small></span></label><button type="button" data-preview="${escapeHtml(node.id)}">Preview</button></li>`;
+    if (!groups.has(group.id)) groups.set(group.id, { title: group.title, items: [] });
+    groups.get(group.id)!.items.push(item);
+  }
+  const items = [...groups].map(([id, group]) => `<details class="esiana-import-group" data-group="${escapeHtml(id)}" open><summary>${escapeHtml(group.title)} <span>${group.items.length} ${group.items.length === 1 ? 'page' : 'pages'}</span></summary><ul class="esiana-import-list">${group.items.join('')}</ul></details>`).join('');
+  const categories = [...groups].map(([id, group]) => `<option value="${escapeHtml(id)}">${escapeHtml(group.title)}</option>`).join('');
+  const content = `<div class="esiana-import"><div class="esiana-import-filters"><input name="search" type="search" placeholder="Search pages" aria-label="Search pages"><select name="category" aria-label="Filter by category"><option value="">All categories</option>${categories}</select></div><div class="esiana-import-toolbar"><button type="button" data-select-visible>Select visible</button><span data-selection-count aria-live="polite">0 selected</span></div><div class="esiana-import-groups">${items || '<p class="esiana-import-empty">No pages found.</p>'}</div><div class="esiana-import-footer"><label>Import behavior <select name="mode"><option value="independent">Independent copies</option><option value="fromEsiana">Sync from Esiana</option></select></label><p class="esiana-import-hint" data-mode-hint>Independent copies do not synchronize.</p><aside data-preview-output aria-live="polite">Select Preview to inspect a page.</aside></div></div>`;
   const onInteraction = async (event: Event) => {
     const target = event.target as HTMLElement;
     const form = target.closest('.esiana-import') as HTMLElement | null;
@@ -62,16 +67,19 @@ export async function openImportBrowser(): Promise<void> {
       const search = (form.querySelector('[name=search]') as HTMLInputElement).value.toLowerCase();
       const category = (form.querySelector('[name=category]') as HTMLSelectElement).value;
       form.querySelectorAll<HTMLLIElement>('li[data-search]').forEach((item) => { item.hidden = !item.dataset.search?.includes(search) || Boolean(category && item.dataset.category !== category); });
+      form.querySelectorAll<HTMLElement>('[data-group]').forEach((group) => { group.hidden = !group.querySelector('li[data-search]:not([hidden])'); });
+      const mode = (form.querySelector('[name=mode]') as HTMLSelectElement).value;
+      const hint = form.querySelector('[data-mode-hint]'); if (hint) hint.textContent = mode === 'independent' ? 'Independent copies do not synchronize.' : 'Linked pages can synchronize using the selected direction in settings.';
       const count = form.querySelectorAll('input[name=page]:checked').length;
       const status = form.querySelector('[data-selection-count]'); if (status) status.textContent = `${count} selected`;
     };
     if (event.type === 'input' || event.type === 'change') { update(); return; }
     const button = target.closest('button') as HTMLButtonElement | null;
     if (!button) return;
-    if (button.hasAttribute('data-select-visible')) { form.querySelectorAll<HTMLInputElement>('li:not([hidden]) input[name="page"]:not(:disabled)').forEach((input) => { input.checked = true; }); update(); }
+    if (button.hasAttribute('data-select-visible')) { form.querySelectorAll<HTMLInputElement>('li:not([hidden]) input[name="page"]:not(:disabled)').forEach((input) => { if (input.closest('details')?.open) input.checked = true; }); update(); }
     if (button.dataset.preview) {
       const output = form.querySelector('[data-preview-output]')!; output.textContent = 'Loading preview…';
-      try { const page = await client.wikiPage(button.dataset.preview, audience === 'party'); output.innerHTML = `<h3>${escapeHtml(page.title)}</h3>${renderWikiPage(page)}`; }
+      try { const prepared = await prepareWikiImport(client, button.dataset.preview, audience, projectionVerified); const sections = prepared.presentation ? prepared.presentation.map((part) => `<section><h3>${escapeHtml(part.title)}</h3>${part.html}</section>`).join('') : prepared.html; output.innerHTML = `<h3>${escapeHtml(prepared.page.title)}</h3>${sections}`; }
       catch (error) { output.textContent = error instanceof Error ? error.message : 'Unable to load preview.'; }
     }
   };

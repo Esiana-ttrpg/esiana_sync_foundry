@@ -1,4 +1,4 @@
-﻿.esiana-sync-form { display: grid; gap: .75rem; }
+.esiana-sync-form { display: grid; gap: .75rem; }
 .esiana-sync-form label { display: grid; gap: .25rem; }
 .esiana-sync-collections fieldset { border: 1px solid var(--color-border-light-2); margin: .5rem 0; padding: .75rem; }
 .esiana-sync-collections fieldset > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem 1rem; margin: .5rem 0; }
@@ -13,7 +13,11 @@
 .esiana-import-toolbar { display: flex; align-items: center; gap: .75rem; }
 .esiana-import-toolbar button { flex: 0 0 auto; width: auto; }
 .esiana-import-toolbar span { color: var(--color-text-light-6); font-size: .9em; }
-.esiana-import .esiana-import-list { list-style: none; margin: 0; padding: 0; max-height: min(42vh, 24rem); overflow-y: auto; border-top: 1px solid var(--color-border-light-2); border-bottom: 1px solid var(--color-border-light-2); }
+.esiana-import-groups { max-height: min(42vh, 24rem); overflow-y: auto; border-top: 1px solid var(--color-border-light-2); border-bottom: 1px solid var(--color-border-light-2); }
+.esiana-import .esiana-import-list { list-style: none; margin: 0; padding: 0; }
+.esiana-import-group > summary { cursor: pointer; padding: .5rem .25rem; font-weight: bold; }
+.esiana-import-group > summary span { color: var(--color-text-light-6); font-size: .9em; font-weight: normal; }
+.esiana-import-group[hidden] { display: none; }
 .esiana-import .esiana-import-row { display: flex; align-items: center; gap: .5rem; margin: 0; padding: .35rem .25rem; border-bottom: 1px solid var(--color-border-light-2); }
 .esiana-import .esiana-import-row:last-child { border-bottom: 0; }
 .esiana-import .esiana-import-row[hidden] { display: none; }
@@ -23,6 +27,7 @@
 .esiana-import-row button { flex: 0 0 auto; width: auto; }
 .esiana-import-empty { padding: .75rem; }
 .esiana-import-footer { display: grid; gap: .5rem; }
+.esiana-import-hint { margin: 0; color: var(--color-text-light-6); font-size: .9em; }
 .esiana-import-footer label { display: flex; align-items: center; gap: .5rem; }
 .esiana-import-footer select { flex: 1; min-width: 0; }
 .esiana-import aside { max-height: 12rem; overflow: auto; padding: .5rem; border: 1px solid var(--color-border-light-2); }
