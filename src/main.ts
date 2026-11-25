@@ -48,9 +48,10 @@ Hooks.on('renderJournalDirectory', (_app: any, html: any) => {
   if (!root || root.querySelector('.esiana-sidebar-actions')) return;
   const controls = document.createElement('div');
   controls.className = 'esiana-sidebar-actions';
-  const configure = document.createElement('button'); configure.type = 'button'; configure.textContent = 'Import Esiana';
+  const icon = () => { const img = document.createElement('img'); img.src = 'modules/esiana-sync/assets/esiana.svg'; img.alt = ''; return img; };
+  const configure = document.createElement('button'); configure.type = 'button'; configure.append(icon(), document.createTextNode('Import Esiana'));
   configure.addEventListener('click', () => void openImportBrowser().catch((error) => engine.report(error)));
-  const sync = document.createElement('button'); sync.type = 'button'; sync.textContent = 'Sync Esiana';
+  const sync = document.createElement('button'); sync.type = 'button'; sync.append(icon(), document.createTextNode('Sync Esiana'));
   sync.addEventListener('click', () => void engine.sync().catch((error) => engine.report(error)));
   controls.append(configure, sync); root.append(controls);
 });

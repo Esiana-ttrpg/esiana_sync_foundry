@@ -1,6 +1,6 @@
 {
   "name": "esiana-sync-foundry",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "type": "module",
   "engines": {
@@ -13,7 +13,7 @@
     "dev:link": "pnpm run build && node scripts/link-dev.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test src/*.test.ts",
-    "test:build": "pnpm run build && node scripts/settings.test.mjs && node scripts/wiki-sync.test.mjs && node scripts/campaign.test.mjs"
+    "test:build": "pnpm run build && node scripts/settings.test.mjs && node scripts/wiki-sync.test.mjs && node scripts/campaign.test.mjs && node scripts/import-ui.test.mjs"
   },
   "devDependencies": {
     "fflate": "^0.8.3",

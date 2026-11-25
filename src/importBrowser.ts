@@ -1,4 +1,5 @@
-﻿import { prepareWikiImport, createWikiJournal, renderWikiPage } from './wikiSync.js';
+﻿import { importableRows } from './wikiTree.js';
+import { prepareWikiImport, createWikiJournal, renderWikiPage } from './wikiSync.js';
 import { EsianaClient } from './api.js';
 import { markdownToHtml } from './conversion.js';
 import { getConfig, getToken, MODULE_ID } from './settings.js';
@@ -43,28 +44,31 @@ export async function openImportBrowser(): Promise<void> {
   if (!Array.isArray(result.tree)) throw new Error('Esiana returned an invalid wiki tree.');
   const partyRows = projectionVerified ? flatten(partyTree!.tree) : [];
   const partyById = new Map(partyRows.map((row) => [row.node.id, row]));
-  const rows = flatten(result.tree).filter(({ node }) => game.settings.get(MODULE_ID, 'showTemplates') || node.templateType !== 'TEMPLATE');
+  const rows = importableRows(result.tree).filter(({ node }) => game.settings.get(MODULE_ID, 'showTemplates') || node.templateType !== 'TEMPLATE');
   const instance = config.instanceUrl.trim().replace(/\/$/, '') || 'https://esiana.psl.coffee';
   const items = rows.map(({ node, ancestors }) => {
     const path = ancestors.map((item) => item.title).join(' / ');
     const existing = imported(node.id, config.campaignHandle, instance);
-    return `<li data-search="${escapeHtml(`${node.title} ${path}`.toLowerCase())}" data-category="${escapeHtml(ancestors[0]?.id ?? node.id)}"><label><input type="checkbox" name="page" value="${escapeHtml(node.id)}" ${existing ? 'disabled' : ''}> <strong>${escapeHtml(node.title)}</strong> <small>${escapeHtml(path)} · ${escapeHtml(node.visibility)}${existing ? ' · Imported' : ''}</small></label><button type="button" data-preview="${escapeHtml(node.id)}">Preview</button></li>`;
+    return `<li class="esiana-import-row" data-search="${escapeHtml(`${node.title} ${path}`.toLowerCase())}" data-category="${escapeHtml(ancestors[0]?.id ?? node.id)}"><label><input type="checkbox" name="page" value="${escapeHtml(node.id)}" ${existing ? 'disabled' : ''}> <strong>${escapeHtml(node.title)}</strong> <small>${escapeHtml(path)} · ${escapeHtml(node.visibility)}${existing ? ' · Imported' : ''}</small></label><button type="button" data-preview="${escapeHtml(node.id)}">Preview</button></li>`;
   }).join('');
-  const categories = result.tree.map((node) => `<option value="${escapeHtml(node.id)}">${escapeHtml(node.title)}</option>`).join('');
-  const content = `<form class="esiana-import"><p>Choose independent copies or updates from Esiana. Unrecognized widgets are imported as readable data.</p><div class="esiana-import-filters"><input name="search" type="search" placeholder="Search pages"><select name="category"><option value="">All categories</option>${categories}</select><button type="button" data-select-visible>Select visible</button></div><label>Import behavior <select name="mode"><option value="independent">Independent copies</option><option value="fromEsiana">Sync from Esiana</option></select></label><ul>${items || '<li>No pages found.</li>'}</ul><aside data-preview-output>Select Preview to inspect a page.</aside></form>`;
+  const categoryNodes = new Map(rows.map(({ node, ancestors }) => { const category = ancestors[0] ?? node; return [category.id, category] as const; }));
+  const categories = [...categoryNodes.values()].map((node) => `<option value="${escapeHtml(node.id)}">${escapeHtml(node.title)}</option>`).join('');
+  const content = `<div class="esiana-import"><div class="esiana-import-filters"><input name="search" type="search" placeholder="Search pages" aria-label="Search pages"><select name="category" aria-label="Filter by category"><option value="">All categories</option>${categories}</select></div><div class="esiana-import-toolbar"><button type="button" data-select-visible>Select visible</button><span data-selection-count aria-live="polite">0 selected</span></div><ul class="esiana-import-list">${items || '<li class="esiana-import-empty">No pages found.</li>'}</ul><div class="esiana-import-footer"><label>Import behavior <select name="mode"><option value="independent">Independent copies</option><option value="fromEsiana">Sync from Esiana</option></select></label><aside data-preview-output aria-live="polite">Select Preview to inspect a page.</aside></div></div>`;
   const onInteraction = async (event: Event) => {
     const target = event.target as HTMLElement;
-    const form = target.closest('.esiana-import') as HTMLFormElement | null;
+    const form = target.closest('.esiana-import') as HTMLElement | null;
     if (!form) return;
     const update = () => {
-      const search = (form.elements.namedItem('search') as HTMLInputElement).value.toLowerCase();
-      const category = (form.elements.namedItem('category') as HTMLSelectElement).value;
+      const search = (form.querySelector('[name=search]') as HTMLInputElement).value.toLowerCase();
+      const category = (form.querySelector('[name=category]') as HTMLSelectElement).value;
       form.querySelectorAll<HTMLLIElement>('li[data-search]').forEach((item) => { item.hidden = !item.dataset.search?.includes(search) || Boolean(category && item.dataset.category !== category); });
+      const count = form.querySelectorAll('input[name=page]:checked').length;
+      const status = form.querySelector('[data-selection-count]'); if (status) status.textContent = `${count} selected`;
     };
     if (event.type === 'input' || event.type === 'change') { update(); return; }
     const button = target.closest('button') as HTMLButtonElement | null;
     if (!button) return;
-    if (button.hasAttribute('data-select-visible')) form.querySelectorAll<HTMLInputElement>('li:not([hidden]) input[name="page"]:not(:disabled)').forEach((input) => { input.checked = true; });
+    if (button.hasAttribute('data-select-visible')) { form.querySelectorAll<HTMLInputElement>('li:not([hidden]) input[name="page"]:not(:disabled)').forEach((input) => { input.checked = true; }); update(); }
     if (button.dataset.preview) {
       const output = form.querySelector('[data-preview-output]')!; output.textContent = 'Loading preview…';
       try { const page = await client.wikiPage(button.dataset.preview, audience === 'party'); output.innerHTML = `<h3>${escapeHtml(page.title)}</h3>${renderWikiPage(page)}`; }

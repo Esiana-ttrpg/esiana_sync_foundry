@@ -9,6 +9,7 @@ const errors = [];
 if (manifest.id !== 'esiana-sync') errors.push('module id must be esiana-sync');
 if (Number(manifest.compatibility?.minimum) !== 13) errors.push('minimum Foundry version must be 13');
 if (Number(manifest.compatibility?.verified) < 14) errors.push('verified Foundry version must be 14 or newer');
+try { await access(new URL('assets/esiana.svg', dist)); } catch { errors.push('Esiana logo is missing'); }
 const expectedScripts = `scripts/v${manifest.version}/`;
 if (!(manifest.esmodules ?? []).every((path) => path.startsWith(expectedScripts))) errors.push('module scripts must use the versioned directory');
 for (const path of [...(manifest.esmodules ?? []), ...(manifest.styles ?? []), ...(manifest.languages ?? []).map(({ path }) => path)]) {

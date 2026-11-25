@@ -1,6 +1,17 @@
 ﻿const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+// Esiana's editor may store HTML entities in Markdown. Decode once before
+// escaping so entities render correctly while source HTML stays inert.
+function decodeEntities(value: string): string {
+  const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' };
+  return value.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi, (match, entity: string) => {
+    if (entity[0] !== '#') return named[entity.toLowerCase()] ?? match;
+    const hex = entity[1]?.toLowerCase() === 'x';
+    const code = Number.parseInt(entity.slice(hex ? 2 : 1), hex ? 16 : 10);
+    return Number.isFinite(code) && code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff) ? String.fromCodePoint(code) : match;
+  });
+}
 function inlineMarkdown(value: string): string {
-  return escapeHtml(value)
+  return escapeHtml(decodeEntities(value))
     .replace(/`([^`\n]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
